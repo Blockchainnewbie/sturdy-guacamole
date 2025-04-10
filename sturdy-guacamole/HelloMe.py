@@ -1,7 +1,8 @@
 class HelloMe:
     pass
 
-
-@staticmethod
 def me():
     print("Hello, Me!")
+
+if __name__ == '__main__':
+    me()
