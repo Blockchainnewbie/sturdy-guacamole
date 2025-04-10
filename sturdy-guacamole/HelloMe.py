@@ -3,5 +3,5 @@ class HelloMe:
 
 
 @staticmethod
-def hello():
+def me():
     print("Hello, Me!")
