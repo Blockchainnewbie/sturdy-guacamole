@@ -183,3 +183,192 @@ Denk dran: Jedes Mal, wenn du eine neue Version deines Pakets veröffentlichen w
 2.  Die Schritte 4, (optional 5) und 6 wiederholen.
 
 Ich hoffe, diese Anleitung hilft dir weiter\! Wenn du auf Probleme stößt oder Fragen hast, frag einfach. Viel Erfolg beim Veröffentlichen deines Pakets\! 😊
+
+
+# Von GitHub zu PyPI: Eine Schritt-für-Schritt Anleitung
+
+Diese Anleitung erklärt, wie du ein Python-Paket von GitHub direkt zu PyPI hochladen kannst, mit einem automatischen Workflow über GitHub Actions und dem "Trusted Publisher"-System.
+
+## Voraussetzungen
+
+- Ein GitHub-Account
+- Ein PyPI-Account
+- Ein Python-Projekt mit einer gültigen `setup.py` oder `pyproject.toml`
+- Git auf deinem lokalen Computer
+
+## 1. PyPI Trusted Publisher einrichten
+
+PyPI's "Trusted Publisher"-System ermöglicht es, Code direkt von GitHub zu veröffentlichen, ohne API-Tokens im Workflow speichern zu müssen.
+
+### 1.1 PyPI-Konto vorbereiten
+
+1. Logge dich bei [PyPI](https://pypi.org) ein
+2. Gehe zu deinen **Konto-Einstellungen** → **Publishing**
+3. Klicke auf "Add Publisher"
+4. Fülle das Formular mit folgenden Werten aus:
+   - Publisher: `GitHub Actions`
+   - Owner: `dein-github-username` 
+   - Repository: `dein-repo-name`
+   - Workflow name: `Publish Python Package` (oder wie dein Workflow heißen wird)
+   - Environment (optional): leer lassen oder spezifizieren, falls du es nutzt
+5. Speichere die Einstellungen
+
+## 2. GitHub Actions Workflow einrichten
+
+Erstelle in deinem Repository eine Datei unter `.github/workflows/publish.yml` mit folgendem Inhalt:
+
+```yaml
+name: Publish Python Package
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Wichtig für OIDC!
+      
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+    - name: Build package
+      run: python -m build
+    - name: Publish package
+      uses: pypa/gh-action-pypi-publish@release/v1
+      # Keine Token-Angabe mehr nötig, da wir Trusted Publisher verwenden
+```
+
+## 3. Erstes Paket manuell hochladen (nur einmalig notwendig)
+
+**Wichtig**: Trusted Publishers können nur zu bereits existierenden Projekten veröffentlichen. Daher musst du dein Paket zunächst einmal manuell hochladen:
+
+```bash
+# Build-Pakete erstellen
+python -m build
+
+# Manuell zu PyPI hochladen
+python -m twine upload dist/*
+```
+
+Bei der Ausführung von `twine upload` wirst du nach deinen PyPI-Zugangsdaten gefragt.
+
+## 4. setup.py korrekt konfigurieren
+
+Stelle sicher, dass deine `setup.py` korrekt konfiguriert ist. Hier ein Beispiel für eine gute `setup.py`:
+
+```python
+from setuptools import setup, find_packages
+
+# README.md als long_description verwenden
+with open("README.md", "r", encoding="utf-8") as fh:
+    long_description = fh.read()
+
+setup(
+    name="dein-paket-name",  # Muss exakt mit dem PyPI-Namen übereinstimmen!
+    version="0.1.0",
+    author="Dein Name",
+    author_email="deine.email@example.com",
+    description="Kurze Beschreibung des Pakets",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://github.com/username/repository",
+    project_urls={
+        "Bug Tracker": "https://github.com/username/repository/issues",
+    },
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ],
+    packages=find_packages(),
+    python_requires=">=3.6",
+    install_requires=[
+        # Abhängigkeiten hier auflisten
+        "requests>=2.25.1",
+    ],
+)
+```
+
+⚠️ **Der Name in der setup.py muss exakt mit dem auf PyPI registrierten Namen übereinstimmen!**
+
+## 5. Code ändern und veröffentlichen
+
+Jedes Mal, wenn du eine neue Version veröffentlichen möchtest:
+
+### 5.1 Version aktualisieren
+
+Ändere die Versionsnummer in deiner `setup.py` oder `pyproject.toml`.
+
+### 5.2 Änderungen zu GitHub übertragen
+
+```bash
+# Status überprüfen
+git status
+
+# Änderungen hinzufügen
+git add .
+
+# Commit erstellen
+git commit -m "Version auf 0.1.1 aktualisiert"
+
+# Zu GitHub pushen
+git push origin main
+```
+
+### 5.3 Release auf GitHub erstellen
+
+1. Gehe zu deinem Repository auf GitHub
+2. Klicke auf "Releases" in der rechten Seitenleiste
+3. Klicke auf "Draft a new release" oder "Create a new release"
+4. Gib einen Tag-Namen ein (z.B. v0.1.1) - dieser sollte mit deiner package-Version übereinstimmen
+5. Gib einen Titel für den Release ein
+6. Füge Beschreibungen/Release Notes hinzu
+7. Klicke auf "Publish release"
+
+### 5.4 Workflow überprüfen
+
+Nachdem du den Release erstellt hast:
+
+1. Gehe zum "Actions" Tab in deinem GitHub Repository
+2. Du solltest deinen Workflow "Publish Python Package" sehen, der ausgeführt wird
+3. Warte, bis der Workflow abgeschlossen ist
+
+Wenn alles richtig konfiguriert ist, wird dein Paket automatisch zu PyPI hochgeladen!
+
+## Häufige Fehler und Lösungen
+
+### "Non-user identities cannot create new projects"
+
+Das bedeutet, dass entweder:
+- Das Paket existiert noch nicht auf PyPI (löse durch manuelles erstmaliges Hochladen)
+- Der Name in deiner setup.py stimmt nicht mit dem auf PyPI überein (passe den Namen an)
+
+### "Filename or contents already exists"
+
+Die Version, die du hochladen möchtest, existiert bereits auf PyPI. Du musst die Versionsnummer erhöhen.
+
+### "Invalid or non-existent project name"
+
+Der angegebene Name in deiner Konfiguration stimmt nicht mit einem auf PyPI existierenden Projekt überein.
+
+## Tipps für gute Pakete
+
+- **Dokumentation**: Erstelle eine gute README.md mit Installationsanweisungen und Beispielen
+- **Tests**: Füge Tests hinzu, um die Qualität deines Codes sicherzustellen
+- **Semantic Versioning**: Nutze [Semantic Versioning](https://semver.org/) für deine Versionsnummern
+- **Changelog**: Führe eine CHANGELOG.md, um Änderungen zwischen Versionen zu dokumentieren
+
+## Nützliche Ressourcen
+
+- [PyPI Trusted Publishers Dokumentation](https://docs.pypi.org/trusted-publishers/)
+- [Python Packaging User Guide](https://packaging.python.org/)
+- [GitHub Actions Dokumentation](https://docs.github.com/en/actions)
