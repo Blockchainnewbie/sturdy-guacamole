@@ -6,23 +6,38 @@ class SnakeGame:
         # Fensterkonfiguration
         self.master = master
         self.master.title("Snake Game")
-        self.master.geometry("400x400")
+        self.master.geometry("400x450")  # Höhe erhöht für Punktestand
         self.master.resizable(False, False)
         
         # Spielkonstanten
         self.width = 400
         self.height = 400
         self.cell_size = 20
-        self.game_speed = 150  # Millisekunden
+        self.base_speed = 150  # Basis-Geschwindigkeit in Millisekunden
+        self.game_speed = self.base_speed
+        self.speed_increase = 5  # Geschwindigkeitssteigerung pro Futter
         
         # Spielvariablen
         self.direction = "Right"
         self.new_direction = "Right"
         self.game_running = False
+        self.score = 0
         
         # Initialisiere die Schlange und das Futter
         self.snake = [(100, 100), (80, 100), (60, 100)]
         self.food = self.create_food()
+        
+        # Frame für Punktestand
+        self.score_frame = tk.Frame(self.master, height=50)
+        self.score_frame.pack(fill=tk.X)
+        
+        # Punktestand-Label
+        self.score_label = tk.Label(
+            self.score_frame, 
+            text="Punkte: 0", 
+            font=("Arial", 14)
+        )
+        self.score_label.pack(pady=10)
         
         # Canvas erstellen
         self.canvas = tk.Canvas(self.master, bg="black", width=self.width, height=self.height)
@@ -34,6 +49,10 @@ class SnakeGame:
         # Tastaturereignisse
         self.master.bind("<KeyPress>", self.on_key_press)
 
+    def update_score_display(self):
+        """Aktualisiert die Punkteanzeige"""
+        self.score_label.config(text=f"Punkte: {self.score}")
+
     def show_start_screen(self):
         """Zeigt den Startbildschirm an"""
         self.canvas.delete("all")
@@ -44,6 +63,11 @@ class SnakeGame:
         self.canvas.create_text(
             self.width // 2, self.height // 2 + 10,
             text="Drücke 'Space' zum Starten", fill="white", font=("Arial", 12)
+        )
+        # Hilfetext für Steuerung hinzufügen
+        self.canvas.create_text(
+            self.width // 2, self.height // 2 + 50,
+            text="Steuerung: Pfeiltasten", fill="white", font=("Arial", 10)
         )
 
     def create_food(self):
@@ -68,7 +92,7 @@ class SnakeGame:
             self.start_game()
             return
         
-        # Richtungsänderungen
+        # Richtungsänderungen - verhindere 180-Grad-Wendungen
         if key == "Up" and self.direction != "Down":
             self.new_direction = "Up"
         elif key == "Down" and self.direction != "Up":
@@ -81,6 +105,9 @@ class SnakeGame:
     def start_game(self):
         """Startet das Spiel"""
         self.canvas.delete("all")
+        self.score = 0
+        self.update_score_display()
+        self.game_speed = self.base_speed
         self.draw_snake()
         self.draw_food()
         self.game_loop()
@@ -88,11 +115,13 @@ class SnakeGame:
     def draw_snake(self):
         """Zeichnet die Schlange auf dem Canvas"""
         self.canvas.delete("snake")
-        for segment in self.snake:
+        for i, segment in enumerate(self.snake):
             x, y = segment
+            # Kopf in anderer Farbe
+            fill_color = "darkgreen" if i == 0 else "green"
             self.canvas.create_rectangle(
                 x, y, x + self.cell_size, y + self.cell_size,
-                fill="green", outline="black", tags="snake"
+                fill=fill_color, outline="black", tags="snake"
             )
 
     def draw_food(self):
@@ -146,6 +175,15 @@ class SnakeGame:
         
         # Prüfe, ob die Schlange das Futter gefressen hat
         if self.snake[0] == self.food:
+            # Erhöhe den Punktestand
+            self.score += 10
+            self.update_score_display()
+            
+            # Erhöhe die Geschwindigkeit
+            if self.game_speed > 50:  # Limitiere die maximale Geschwindigkeit
+                self.game_speed -= self.speed_increase
+            
+            # Generiere neues Futter
             self.food = self.create_food()
         else:
             # Wenn nicht, entferne das letzte Segment
@@ -176,7 +214,7 @@ class SnakeGame:
         )
         self.canvas.create_text(
             self.width // 2, self.height // 2 + 10,
-            text=f"Punkte: {len(self.snake) - 3}", fill="white", font=("Arial", 18)
+            text=f"Punkte: {self.score}", fill="white", font=("Arial", 18)
         )
         self.canvas.create_text(
             self.width // 2, self.height // 2 + 50,
