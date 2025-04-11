@@ -6,10 +6,10 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="sturdy-guacamole",  # Muss exakt mit dem PyPI-Namen übereinstimmen!
-    version="0.1.2",
+    version="0.1.3",
     author="Blockchainnewbie",
     author_email="mdhab@outlook.com",
-    description="Kurze Beschreibung des Pakets",
+    description="Updated Snake Game with GUI",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/Blockchainnewbie/sturdy-guacamole",
